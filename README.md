@@ -16,25 +16,31 @@ Docker Compose configuration for a 4-node Apache Kafka cluster in KRaft mode (no
 
 ## Quick Start
 
-**1. Initialize cluster**
+**1. Clone repository**
+```bash
+git clone https://github.com/cuongct220020/kafka-cluster-setup.git kafka-cluster
+cd kafka-cluster
+```
+
+**2. Initialize cluster**
 ```bash
 ./scripts/init-cluster.sh
 ```
 
-**2. Format storage (first time only)**
+**3. Format storage (first time only)**
 ```bash
 ./scripts/format-storage.sh
 ```
 ⚠️ Only run on fresh setup or after complete reset. This will erase all data.
 
-**3. Start cluster**
+**4. Start cluster**
 ```bash
 docker compose -f docker-compose.kafka.yml up -d
 ```
 
-**4. Verify cluster is ready (30-60s)**
+**5. Verify cluster is ready (30-60s)**
 ```bash
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+docker ps --format "table {{.Names}}	{{.Status}}	{{.Ports}}"
 ```
 All containers should show "Up (healthy)".
 
