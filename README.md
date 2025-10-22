@@ -22,23 +22,26 @@ git clone https://github.com/cuongct220020/kafka-cluster-setup.git kafka-cluster
 cd kafka-cluster
 ```
 
-**2. Initialize cluster**
+**2. Configure Environment Variables (.env)**
+- Create the .env file by copying the contents from .env.example.
+
+**3. Initialize cluster**
 ```bash
 ./scripts/init-cluster.sh
 ```
 
-**3. Format storage (first time only)**
+**4. Format storage (first time only)**
 ```bash
 ./scripts/format-storage.sh
 ```
 ⚠️ Only run on fresh setup or after complete reset. This will erase all data.
 
-**4. Start cluster**
+**5. Start cluster**
 ```bash
 docker compose -f docker-compose.kafka.yml up -d
 ```
 
-**5. Verify cluster is ready (30-60s)**
+**6. Verify cluster is ready (30-60s)**
 ```bash
 docker ps --format "table {{.Names}}	{{.Status}}	{{.Ports}}"
 ```
