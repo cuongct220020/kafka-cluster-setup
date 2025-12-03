@@ -1,5 +1,41 @@
 # Apache Kafka - Kỷ nguyên Kraft và giao thức thế hệ mới
 
+## Mục lục
+<!-- TOC -->
+  * [1. Tổng quan và phạm vi nghiên cứu](#1-tổng-quan-và-phạm-vi-nghiên-cứu)
+  * [2. Kiến trúc KRaft: Cuộc cách mạng trong quản trị Metadata](#2-kiến-trúc-kraft-cuộc-cách-mạng-trong-quản-trị-metadata)
+    * [2.1. Cơ chế đồng thuận Raft và Quorum Controller.](#21-cơ-chế-đồng-thuận-raft-và-quorum-controller-)
+      * [2.1.1. Topic `__cluster_metadata` và Event-Sourced State](#211-topic-__cluster_metadata-và-event-sourced-state)
+    * [2.2. Cơ chế Snapshotting và Quản lý Log Metadata (KIP-630)](#22-cơ-chế-snapshotting-và-quản-lý-log-metadata-kip-630)
+      * [2.2.1. Kiến trúc Snapshot Độc lập](#221-kiến-trúc-snapshot-độc-lập)
+      * [2.2.2. Log Cleaning và Retention](#222-log-cleaning-và-retention)
+    * [2.3. Dynamic Qourum Reconfiguration (KIP-853)](#23-dynamic-qourum-reconfiguration-kip-853)
+  * [3. Cơ chế lưu trữ vật lý và tối ưu hoá I/O](#3-cơ-chế-lưu-trữ-vật-lý-và-tối-ưu-hoá-io)
+    * [3.1. Cấu trúc Log Segment: Giải phẫu chi tiết](#31-cấu-trúc-log-segment-giải-phẫu-chi-tiết)
+      * [3.1.1. File `.log`: Dữ liệu tuần tự](#311-file-log-dữ-liệu-tuần-tự)
+      * [3.1.2. Hệ thống Indexing kép (Dual Indexing Architecture)](#312-hệ-thống-indexing-kép-dual-indexing-architecture)
+  * [3.2. Cơ chế Log Compaction: Key-Value Stream](#32-cơ-chế-log-compaction-key-value-stream)
+    * [3.2.1. Kiến trúc Head và Tail](#321-kiến-trúc-head-và-tail)
+    * [3.2.2. Thuật toán Cleaner Thread](#322-thuật-toán-cleaner-thread)
+  * [3.3. Zero-Copy và tối ưu hoá Page Cache](#33-zero-copy-và-tối-ưu-hoá-page-cache)
+    * [3.3.1. Page Cache Centric Design](#331-page-cache-centric-design)
+    * [3.3.2. Zero-Copy Data Transfer](#332-zero-copy-data-transfer)
+  * [4. Giao thức mạng và mô hình xử lý Request](#4-giao-thức-mạng-và-mô-hình-xử-lý-request)
+    * [4.1. Kiến trúc Threading Model: Refactor Pattern](#41-kiến-trúc-threading-model-refactor-pattern)
+    * [4.2. Request Purgatory: Quản lý Delayed Operations](#42-request-purgatory-quản-lý-delayed-operations)
+      * [4.2.1. Hierarchical Timing Wheels (Bánh xe thời gian phân cấp)](#421-hierarchical-timing-wheels-bánh-xe-thời-gian-phân-cấp)
+  * [5. Replication Protocol và Data Consistency](#5-replication-protocol-và-data-consistency)
+    * [5.1. Cơ chế ISR (In-Sync Replicas) và High Watermark](#51-cơ-chế-isr-in-sync-replicas-và-high-watermark)
+    * [5.2. Vấn đề Truncation và Giải pháp Leader Epoch (KIP-101)](#52-vấn-đề-truncation-và-giải-pháp-leader-epoch-kip-101)
+    * [5.3. Idempotent và Tracsactional Producer: Exactly-Once Semantics (EOS)](#53-idempotent-và-tracsactional-producer-exactly-once-semantics-eos)
+      * [5.3.1. Idempotent Producer (`enable.idempotence=true`)](#531-idempotent-producer-enableidempotencetrue)
+      * [5.3.2. Transactional Producer (Atomic Writes)](#532-transactional-producer-atomic-writes)
+  * [6. Consumer Group Protocol: Thế hệ mới (KIP-848)](#6-consumer-group-protocol-thế-hệ-mới-kip-848)
+    * [6.1. Hạn chế của giao thức cổ điển](#61-hạn-chế-của-giao-thức-cổ-điển)
+    * [6.2. Next Generation Protocol (KIP-848)](#62-next-generation-protocol-kip-848)
+<!-- TOC -->
+
+
 ## 1. Tổng quan và phạm vi nghiên cứu
 
 Trong bối cảnh công nghệ phân tán hiện đại, Apache Kafka đã vượt xa vai trò của một hệ thống nhắn tin (message queue) đơn thuần để trở thành xương sống của các kiến trúc Event Streaming. Báo cáo này đi sâu vào phân tích các cơ chế nội tại phức tạp nhất của Kafka, tập trung vào sự chuyển dịch kiến trúc mang tính cách mạng từ Zookeepr sang Kraft (Kafka Raft Metadata Mode), đồng thời mổ xẻ các giao thức mạng ở cấp độ nhị phân, cơ chế lưu trữ vật lý, các thuật toán đồng thuận dữ liệu. 
