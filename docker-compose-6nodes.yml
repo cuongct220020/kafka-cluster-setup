@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # CLUSTER CONTROLLERS (Quorum - Chỉ quản lý Metadata, không lưu Data)
+  # ============================================================================
+  controller-1:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: controller-1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'controller' # Chỉ làm Controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:29093,2@controller-2:29093,3@controller-3:29093'
+      KAFKA_LISTENERS: 'CONTROLLER://controller-1:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    networks:
+      - kafka-net
+
+  controller-2:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: controller-2
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: 'controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:29093,2@controller-2:29093,3@controller-3:29093'
+      KAFKA_LISTENERS: 'CONTROLLER://controller-2:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    networks:
+      - kafka-net
+
+  controller-3:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: controller-3
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: 'controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:29093,2@controller-2:29093,3@controller-3:29093'
+      KAFKA_LISTENERS: 'CONTROLLER://controller-3:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    networks:
+      - kafka-net
+
+  # ============================================================================
+  # DATA BROKERS (Chỉ lưu Data, kết nối tới Controller để lấy Metadata)
+  # ============================================================================
+  broker-1:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: broker-1
+    hostname: broker-1
+    ports:
+      - "9092:9092"
+    depends_on:
+      - controller-1
+      - controller-2
+      - controller-3
+    environment:
+      KAFKA_NODE_ID: 4 # ID khác với Controller
+      KAFKA_PROCESS_ROLES: 'broker' # Chỉ làm Broker
+      # Broker phải biết danh sách Controller để kết nối
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:29093,2@controller-2:29093,3@controller-3:29093'
+      
+      # Broker cần 2 listener: 1 để nói chuyện nội bộ, 1 để client host gọi vào
+      KAFKA_LISTENERS: 'PLAINTEXT://broker-1:29092,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker-1:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    volumes:
+      - broker-1-data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+
+  broker-2:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: broker-2
+    hostname: broker-2
+    ports:
+      - "9093:9093"
+    depends_on:
+      - controller-1
+      - controller-2
+      - controller-3
+    environment:
+      KAFKA_NODE_ID: 5
+      KAFKA_PROCESS_ROLES: 'broker'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:29093,2@controller-2:29093,3@controller-3:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://broker-2:29092,PLAINTEXT_HOST://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker-2:29092,PLAINTEXT_HOST://localhost:9093'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    volumes:
+      - broker-2-data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+
+  broker-3:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: broker-3
+    hostname: broker-3
+    ports:
+      - "9094:9094"
+    depends_on:
+      - controller-1
+      - controller-2
+      - controller-3
+    environment:
+      KAFKA_NODE_ID: 6
+      KAFKA_PROCESS_ROLES: 'broker'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:29093,2@controller-2:29093,3@controller-3:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://broker-3:29092,PLAINTEXT_HOST://0.0.0.0:9094'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker-3:29092,PLAINTEXT_HOST://localhost:9094'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    volumes:
+      - broker-3-data:/var/lib/kafka/data
+    networks:
+      - kafka-net
+
+  # ============================================================================
+  # SERVICES KHÁC
+  # ============================================================================
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.0
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      - broker-1
+      - broker-2
+      - broker-3
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      # Kết nối tới Broker (Node 4,5,6), KHÔNG kết nối tới Controller (Node 1,2,3)
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker-1:29092,broker-2:29092,broker-3:29092'
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 3
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      - kafka-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      - broker-1
+      - schema-registry
+    environment:
+      KAFKA_CLUSTERS_0_NAME: prod-isolated-cluster
+      # UI chỉ cần biết địa chỉ Broker để hiển thị data
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker-1:29092,broker-2:29092,broker-3:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    networks:
+      - kafka-net
+
+volumes:
+  broker-1-data:
+  broker-2-data:
+  broker-3-data:
+
+networks:
+  kafka-net:
+    driver: bridge
