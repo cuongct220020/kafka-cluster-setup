@@ -10,7 +10,7 @@ Mục tiêu của nghiên cứu này là cung cấp một tài liệu kỹ thu�
 
 Sự ra đời của KRaft (được định nghĩa qua KIP-500) không chỉ đơn giản là loại bỏ sự phụ thuộc vào Zookeeper, mà là một sự thay đổi mô hình (paradigm shift) từ quản lý trạng thái phân tán bên ngoài sang mô hình quản lý log sự kiện nội tại (Event-Sourced Metadata). Điều này giải quyết triệt để các giới hạn về khả năng partition và độ trễ phục hồi sự cố. 
 
-### 2.1. Cơ chế đồng thuận Raft và Qourum Controller. 
+### 2.1. Cơ chế đồng thuận Raft và Quorum Controller. 
 
 Trong kiến trúc cũ, Controller là một broker duy nhất được bầu chọn thông qua Zookeeper, chịu trách nhiệm tải và quản lý toàn bộ trạng thái cluster. Khi Controller này gặp sự cố, một Controller mới phải được bầu lên và thực hiện quá trình khởi tạo (loading) trạng thái metadata từ đầu, một quy trình có độ phức tạp tuyến tính O(N) với số lượng partition, gây ra độ trễ failover đáng kể. 
 

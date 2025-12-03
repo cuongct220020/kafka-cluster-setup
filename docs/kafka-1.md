@@ -1,4 +1,48 @@
+# Apache Kafka Basic
 
+## Mục lục
+
+<!-- TOC -->
+  * [Mục lục](#mục-lục)
+  * [1. Giới thiệu: Sự Chuyển dịch Mô hình sang Nhật ký Phân tán (Distributed Log)](#1-giới-thiệu-sự-chuyển-dịch-mô-hình-sang-nhật-ký-phân-tán-distributed-log)
+    * [1.1. Vấn đề nguyên thuỷ: Ma trận tích hợp N x M](#11-vấn-đề-nguyên-thuỷ-ma-trận-tích-hợp-n-x-m)
+    * [1.2. Nhật ký (Log) so với hàng đợi (Queue) và cơ sở dữ liệu (Database)](#12-nhật-ký-log-so-với-hàng-đợi-queue-và-cơ-sở-dữ-liệu-database)
+  * [2. Giải phẫu kiến trúc dữ liệu (Data Plane Architecture)](#2-giải-phẫu-kiến-trúc-dữ-liệu-data-plane-architecture)
+    * [2.1. Partition: Đơn vị của sự song song và thứ tự](#21-partition-đơn-vị-của-sự-song-song-và-thứ-tự)
+    * [2.2. Cấu trúc vật lý Segment (phân đoạn)](#22-cấu-trúc-vật-lý-segment-phân-đoạn)
+    * [2.3. Vòng đời dữ liệu: Log Rolling vs Retention](#23-vòng-đời-dữ-liệu-log-rolling-vs-retention)
+  * [3. Data Plane: Cơ chế Producer và chiến lược phân vùng](#3-data-plane-cơ-chế-producer-và-chiến-lược-phân-vùng)
+    * [3.1. Phân bổ Partition: Key vs. Sticky Partitioner](#31-phân-bổ-partition-key-vs-sticky-partitioner)
+      * [Trương hợp 1: Có khoá (Key-based Partitioning)](#trương-hợp-1-có-khoá-key-based-partitioning)
+      * [Trường hợp 2: Không có khoá (Sticky Partitioner - KIP-480)](#trường-hợp-2-không-có-khoá-sticky-partitioner---kip-480)
+    * [3.2. Cơ chế Batching và Request Purgatory](#32-cơ-chế-batching-và-request-purgatory)
+  * [4. Control Plane: Từ Zookeeper đến Kraft (KIP-500)](#4-control-plane-từ-zookeeper-đến-kraft-kip-500)
+    * [4.1. Hạn chế cốt lõi của Kiến trúc Zookeeepr](#41-hạn-chế-cốt-lõi-của-kiến-trúc-zookeeepr)
+    * [4.2. Metadat như một nhật ký (The Log of ALl Logs)](#42-metadat-như-một-nhật-ký-the-log-of-all-logs)
+    * [4.3. Cơ chế truyền tải Metadata: Push vs. Pull](#43-cơ-chế-truyền-tải-metadata-push-vs-pull)
+    * [4.4. Snapshotting trong KRaft](#44-snapshotting-trong-kraft)
+  * [5. Cơ chế sao chép (Replication) và Đảm bảo dữ liệu](#5-cơ-chế-sao-chép-replication-và-đảm-bảo-dữ-liệu)
+    * [5.1. In-Sync Replicas (ISR)](#51-in-sync-replicas-isr)
+    * [5.2. High Watermark (HW) và Leader Epoch: Ngăn chặn mất dữ liệu và phân kỳ](#52-high-watermark-hw-và-leader-epoch-ngăn-chặn-mất-dữ-liệu-và-phân-kỳ)
+  * [6. Delivery Semantics: Exactly-Once (EOS)](#6-delivery-semantics-exactly-once-eos)
+    * [6.1. Idempotent Producer (Producer luỹ đẳng)](#61-idempotent-producer-producer-luỹ-đẳng)
+    * [6.2. Transactional API (Giao dịch Đa phân vùng)](#62-transactional-api-giao-dịch-đa-phân-vùng)
+  * [7. Cơ chế Consumer và Tái cân bằng (Rebalancing)](#7-cơ-chế-consumer-và-tái-cân-bằng-rebalancing)
+    * [7.1. Offset Management: `__consumer_offsets`](#71-offset-management-__consumer_offsets)
+    * [7.2. Các giao thức Rebalancing: Từ Eager đến Cooperative](#72-các-giao-thức-rebalancing-từ-eager-đến-cooperative)
+  * [8. Tối ưu hoá phần cứng và tích hợp hệ điều hành](#8-tối-ưu-hoá-phần-cứng-và-tích-hợp-hệ-điều-hành)
+    * [8.1. Zero-Copy và `sendfile`](#81-zero-copy-và-sendfile)
+    * [8.2. Sequential I/O và Page Cache](#82-sequential-io-và-page-cache)
+    * [8.3. Lựa chọn phần cứng SSD vs HDD](#83-lựa-chọn-phần-cứng-ssd-vs-hdd)
+  * [9. Tổng kết và kiến nghị](#9-tổng-kết-và-kiến-nghị)
+<!-- TOC -->
+
+
+## 1. Giới thiệu: Sự Chuyển dịch Mô hình sang Nhật ký Phân tán (Distributed Log)
+
+Trong lịch sử phát triển của kiến trúc phần mềm, hiếm có hệ thống nào tạo ra sự thay đổi mô hình (paradigm shift) sâu sắc như Apache Kafka. Xuất phát điểm từ đội ngũ kỹ thuật của LinkedIn vào năm 2010, Kafka không được thiết kế để trở thành một hệ thống hàng đợi tin nhắn (message queue) truyền thống như RabbitMQ hay ActiveMQ, mà được định hình lại từ nguyên lý căn bản của dữ liệu: Nhật ký (The Log).   
+
+Báo cáo này cung cấp một phân tích tường tận, từ khái niệm A-Z đến các cơ chế nội tại (internals) sâu nhất của Kafka, nhằm phục vụ nhu cầu nắm bắt kiến thức nền tảng trước khi triển khai thực tế. Chúng ta sẽ giải phẫu Kafka không chỉ như một công cụ, mà như một hệ quản trị dữ liệu dòng (streaming data platform) với các đảm bảo toán học về tính nhất quán và độ bền vững.
 
 ### 1.1. Vấn đề nguyên thuỷ: Ma trận tích hợp N x M
 
