@@ -38,7 +38,7 @@ cd kafka-cluster
 
 **5. Start cluster**
 ```bash
-docker compose -f docker-compose.kafka.yml up -d
+docker compose -f docker-compose-6nodes.yml up -d
 ```
 
 **6. Verify cluster is ready (30-60s)**
@@ -125,23 +125,23 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server kafka-1:19092 \
 
 **View logs**
 ```bash
-docker compose -f docker-compose.kafka.yml logs kafka-1      # specific node
-docker compose -f docker-compose.kafka.yml logs -f           # follow all
+docker compose -f docker-compose-6nodes.yml logs kafka-1      # specific node
+docker compose -f docker-compose-6nodes.yml logs -f           # follow all
 ```
 
 **Stop cluster**
 ```bash
-docker compose -f docker-compose.kafka.yml down              # stop only
-docker compose -f docker-compose.kafka.yml down -v           # stop + remove data
+docker compose -f docker-compose-6nodes.yml down              # stop only
+docker compose -f docker-compose-6nodes.yml down -v           # stop + remove data
 ```
 
 **Reset cluster completely**
 ```bash
-docker compose -f docker-compose.kafka.yml down -v
+docker compose -f docker-compose-6nodes.yml down -v
 rm -rf data/dev/node*/*
 ./scripts/init-cluster.sh
 ./scripts/format-storage.sh
-docker compose -f docker-compose.kafka.yml up -d
+docker compose -f docker-compose-6nodes.yml up -d
 ```
 
 ## Troubleshooting
@@ -158,7 +158,7 @@ docker ps
 
 **Check logs for errors**
 ```bash
-docker compose -f docker-compose.kafka.yml logs
+docker compose -f docker-compose-6nodes.yml logs
 ```
 
 **Test broker connectivity**
